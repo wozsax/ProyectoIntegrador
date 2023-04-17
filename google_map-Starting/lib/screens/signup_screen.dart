@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_mao/reusable_widgets/reusable_widget.dart';
 import 'package:google_mao/screens/home_screen.dart';
 import 'package:google_mao/utils/color_utils.dart';
+import 'package:google_mao/screens/addpage.dart';
 
 
 class SignUpScreen extends StatefulWidget {
@@ -70,7 +71,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           password: _emailTextController.text)
                           .then((value)  {
                             Navigator.push(context,
-                                    MaterialPageRoute(builder:  (context) => HomeScreen()));
+                                    MaterialPageRoute(builder:  (context) => AddPage()));
 
                         }).onError((error, stackTrace) {
                           print("Error ${error.toString()}");

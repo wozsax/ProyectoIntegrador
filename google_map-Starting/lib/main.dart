@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mao/order_traking_page.dart';
 import 'package:google_mao/screens/signin_screen.dart';
+import 'screens/addpage.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
