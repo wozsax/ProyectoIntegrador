@@ -6,6 +6,7 @@ import 'package:google_mao/screens/editpage.dart';
 import 'package:flutter/material.dart';
 
 import '../services/firebase_crud.dart';
+import 'detallesRuta.dart';
 
 class RutasDisponibles extends StatefulWidget {
   @override
@@ -88,7 +89,7 @@ class _RutasDisponibles extends State<RutasDisponibles> {
                 children: [
                   IconButton(onPressed: () {
                     Navigator.push(context,
-                        MaterialPageRoute(builder: builder: (context) => ))
+                        MaterialPageRoute(builder: (context) => DetallesRuta()));
                   }, icon: const Icon(Icons.more))
                 ],
               ),
