@@ -6,6 +6,7 @@ import 'package:google_mao/screens/signup_screen.dart';
 import 'package:google_mao/utils/color_utils.dart';
 import 'package:google_mao/screens/addpage.dart';
 import 'package:google_mao/reusable_widgets/reusable_widget.dart';
+import 'package:google_mao/screens/rutasDisponobles.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({Key? key}) : super(key: key);
@@ -65,7 +66,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       password: _passwordTextController.text)
                       .then((value) {
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => AddPage()));
+                        MaterialPageRoute(builder: (context) => RutasDisponibles()));
 
                   }).onError((error, stackTrace) {
                     print("error ${error.toString()}");
