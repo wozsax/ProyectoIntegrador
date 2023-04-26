@@ -4,6 +4,7 @@ import 'package:google_mao/screens/addpage.dart';
 import 'package:google_mao/screens/editpage.dart';
 
 import 'package:flutter/material.dart';
+import 'package:google_mao/screens/perfil.dart';
 
 import '../services/firebase_crud.dart';
 import 'detallesRuta.dart';
@@ -29,6 +30,8 @@ class _RutasDisponibles extends State<RutasDisponibles> {
               icon: const Icon(Icons.person_outline),
               tooltip: 'Perfil',
               onPressed: () {
+                Navigator.push(context,
+                    MaterialPageRoute(builder: (context) => ProfileScreen()));
                 // handle the press
               },
             )
@@ -75,7 +78,10 @@ class _RutasDisponibles extends State<RutasDisponibles> {
                 alignment: Alignment.topRight,
                 child:  ElevatedButton(
                   child: Text('Agregar Ruta'),
-                  onPressed: () {},
+                  onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => DetallesRuta()));
+                  },
                 ),
 
               ),
@@ -103,7 +109,10 @@ class _RutasDisponibles extends State<RutasDisponibles> {
                  trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(onPressed: () {}, icon: const Icon(Icons.more))
+                    IconButton(onPressed: () {
+                      Navigator.push(context,
+                          MaterialPageRoute(builder: (context) => DetallesRuta()));
+                    }, icon: const Icon(Icons.more))
                 ],
               ),
               subtitle: Text('Copilco'),
@@ -114,7 +123,10 @@ class _RutasDisponibles extends State<RutasDisponibles> {
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(onPressed: () {}, icon: const Icon(Icons.more))
+                  IconButton(onPressed: () {
+                    Navigator.push(context,
+                        MaterialPageRoute(builder: (context) => DetallesRuta()));
+                  }, icon: const Icon(Icons.more))
                 ],
               ),
               subtitle: Text('Copilco'),
