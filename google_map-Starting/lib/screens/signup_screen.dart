@@ -72,7 +72,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           password: _emailTextController.text)
                           .then((value)  {
                             Navigator.push(context,
-                                    MaterialPageRoute(builder:  (context) => RutasDisponibles()));
+                                    MaterialPageRoute(builder:  (context) => HomeScreen()));
 
                         }).onError((error, stackTrace) {
                           print("Error ${error.toString()}");
