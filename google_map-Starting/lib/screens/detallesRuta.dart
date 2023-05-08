@@ -7,8 +7,12 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:google_mao/screens/unirseViaje.dart';
 
-const String apiKey = 'AIzaSyBBpHiAzk7D0ZUtIZvpy2OsSgGGm1eniic';
+import '../Models/route.dart';
+
+const String apiKey = 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI';
 class DetallesRuta extends StatefulWidget {
+  final RouteModel route;
+  DetallesRuta({required this.route});
   @override
   State<StatefulWidget> createState() {
     return _DetallesRuta();
@@ -19,35 +23,39 @@ class _DetallesRuta extends State<DetallesRuta> {
   late GoogleMapController _controller;
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
+  late double _destinationLat;
+  late double _destinationLng;
 
   @override
   void initState() {
     super.initState();
+    _getDirections();
     _markers.add(
       Marker(
-        markerId: MarkerId("1"),
-        position: LatLng(37.7749, -122.4194),
+        markerId: MarkerId("start"),
+        position: LatLng(widget.route.startPoint.latitude, widget.route.startPoint.longitude),
         infoWindow: InfoWindow(
-          title: "Stop 1",
-          snippet: "San Francisco, CA",
+          title: "Start Location",
+          snippet: widget.route.startLocationName,
         ),
       ),
     );
     _markers.add(
       Marker(
-        markerId: MarkerId("2"),
-        position: LatLng(37.3363, -121.8904),
+        markerId: MarkerId("end"),
+        position: LatLng(widget.route.endPoint.latitude, widget.route.endPoint.longitude),
         infoWindow: InfoWindow(
-          title: "Stop 2",
-          snippet: "San Jose, CA",
+          title: "End Location",
+          snippet: widget.route.endLocationName,
         ),
       ),
     );
     _getDirections();
   }
   Future<void> _getDirections() async {
-    String url =
-        'https://maps.googleapis.com/maps/api/directions/json?origin=37.7749,-122.4194&destination=37.3363,-121.8904&mode=driving&key=$apiKey';
+
+    String url = 'https://maps.googleapis.com/maps/api/directions/json?origin=${widget.route.startPoint.latitude},${widget.route.startPoint.longitude}&destination=${widget.route.endPoint.latitude},${widget.route.endPoint.longitude}&mode=driving&key=$apiKey';
+
 
     final response = await http.get(Uri.parse(url));
 
@@ -83,7 +91,7 @@ class _DetallesRuta extends State<DetallesRuta> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           centerTitle: true,
-          title: Text("Viaje de Liliana"),
+          title: Text("Viaje de " + widget.route.driverId),
           actions: [
             IconButton(
               icon: const Icon(Icons.person_outline),
@@ -113,8 +121,8 @@ class _DetallesRuta extends State<DetallesRuta> {
                 markers: _markers,
                 polylines: _polylines,
                 initialCameraPosition: CameraPosition(
-                  target: LatLng(37.7749, -122.4194),
-                  zoom: 10,
+                  target: LatLng(widget.route.startPoint.latitude, widget.route.startPoint.longitude),
+                  zoom: 12,
                 ),
                 onMapCreated: (GoogleMapController controller) {
                   _controller = controller;
@@ -127,7 +135,7 @@ class _DetallesRuta extends State<DetallesRuta> {
                 child: Text('Unirse al viaje'),
                 onPressed: () {
                   Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => UnirseViaje()));
+                      MaterialPageRoute(builder: (context) => UnirseViaje(markers: _markers)));
                 },
               ),
             ),
@@ -146,9 +154,9 @@ class _DetallesRuta extends State<DetallesRuta> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('Stop 1'),
-                        Text('San Francisco, CA'),
+                        Text(widget.route.startLocationName),
                         SizedBox(height: 10),
-                        Text('10:00 AM'),
+                        Text(widget.route.time.toString()),
                       ],
                     ),
                   ),
@@ -162,9 +170,9 @@ class _DetallesRuta extends State<DetallesRuta> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text('Stop 2'),
-                        Text('San Jose, CA'),
+                        Text(widget.route.endLocationName),
                         SizedBox(height: 10),
-                        Text('11:30 AM'),
+                        Text(widget.route.time.toString()),
                       ],
                     ),
                   ),
