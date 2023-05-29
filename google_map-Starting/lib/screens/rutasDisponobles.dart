@@ -41,14 +41,14 @@ class _RutasDisponibles extends State<RutasDisponibles> {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
             List<RouteModel> routes = snapshot.data!.docs
-                .map((doc) => RouteModel.fromJson(doc.data()! as Map<String, dynamic>))
+                .map((doc) => RouteModel.fromJson(doc.id, doc.data()! as Map<String, dynamic>))
                 .toList();
             return ListView.builder(
               itemCount: routes.length,
               itemBuilder: (context, index) {
                 RouteModel route = routes[index];
                 return ListTile(
-                  title: Text('Route ${route.id}'),
+                  title: Text('Route ID: ${route.id}'),
                   subtitle: Text('${route.startLocationName} a ${route.endLocationName}'),
                   trailing: Icon(Icons.arrow_forward_ios),
                   onTap: ()  async {

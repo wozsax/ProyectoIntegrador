@@ -11,6 +11,7 @@ import '../Models/route.dart';
 
 const String apiKey = 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI';
 class DetallesRuta extends StatefulWidget {
+
   final RouteModel route;
   DetallesRuta({required this.route});
   @override
@@ -91,7 +92,7 @@ class _DetallesRuta extends State<DetallesRuta> {
             onPressed: () => Navigator.of(context).pop(),
           ),
           centerTitle: true,
-          title: Text("Viaje de " + widget.route.driverId),
+          title: Text(("ID:" +widget.route.id)),
           actions: [
             IconButton(
               icon: const Icon(Icons.person_outline),
@@ -135,7 +136,7 @@ class _DetallesRuta extends State<DetallesRuta> {
                 child: Text('Unirse al viaje'),
                 onPressed: () {
                   Navigator.push(context,
-                      MaterialPageRoute(builder: (context) => UnirseViaje(markers: _markers)));
+                      MaterialPageRoute(builder: (context) => UnirseViaje(markers: _markers.toList())));
                 },
               ),
             ),

@@ -21,9 +21,9 @@ class RouteModel {
     required this.waypoints,
   });
 
-  factory RouteModel.fromJson(Map<String, dynamic> json) {
+  factory RouteModel.fromJson(String id, Map<String, dynamic> json) {
     return RouteModel(
-      id: json['id'] ?? '',
+      id: id,
       driverId: json['driverId'] ?? '',
       startPoint: LatLng(
         json['startPoint']['latitude'] ?? 0.0,
@@ -33,8 +33,8 @@ class RouteModel {
         json['endPoint']['latitude'] ?? 0.0,
         json['endPoint']['longitude'] ?? 0.0,
       ),
-      startLocationName: json['startLocationName'] ?? '', // Parse start location name
-      endLocationName: json['endLocationName'] ?? '', // Parse end location name
+      startLocationName: json['startLocationName'] ?? '',
+      endLocationName: json['endLocationName'] ?? '',
       time: DateTime.fromMillisecondsSinceEpoch(json['time'] ?? 0),
       waypoints: (json['waypoints'] as List)
           .map((point) => LatLng(point['latitude'], point['longitude']))
@@ -44,7 +44,6 @@ class RouteModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'driverId': driverId,
       'startPoint': {
         'latitude': startPoint.latitude,
@@ -54,8 +53,8 @@ class RouteModel {
         'latitude': endPoint.latitude,
         'longitude': endPoint.longitude
       },
-      'startLocationName': startLocationName, // Serialize start location name
-      'endLocationName': endLocationName, // Serialize end location name
+      'startLocationName': startLocationName,
+      'endLocationName': endLocationName,
       'time': time.millisecondsSinceEpoch,
       'waypoints': waypoints.map((point) =>
       {

@@ -1,35 +1,87 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
-import 'package:google_mao/screens/aboutus_screen.dart';
+import 'package:google_mao/screens/completed_screen.dart';
+
 import 'package:google_mao/screens/rutasDisponobles.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
-
+import 'package:geocoding/geocoding.dart';
+import 'package:uuid/uuid.dart';
 import '../DirectionsRepository.dart';
 import '../Services/GeocodingService.dart';
 import '../Services/route_services.dart';
 import '../Models/route.dart';
+import 'package:flutter_google_places/flutter_google_places.dart';
+import 'package:google_maps_webservice/places.dart';
+import 'package:geocoding_platform_interface/src/models/location.dart';
+import 'package:google_maps_webservice/src/core.dart' as maps;
+import 'package:google_maps_webservice/places.dart';
+import 'package:google_mao/components/network_utility.dart';
+import 'package:google_mao/Models/autocomplete_prediction.dart';
+import 'package:google_mao/Models/place_auto_complete_response.dart' as ku;
+import 'package:google_mao/components/location_list_tile.dart';
+
+
 
 class CarBookingScreen extends StatefulWidget {
   late RouteModel route =  RouteModel(id: '', startPoint: LatLng(0.0, 0.0), startLocationName: '', driverId: '', endPoint: LatLng(0.0, 0.0), endLocationName: '', time: DateTime.now(), waypoints: []);
-
+  final maps.Location location;
+  CarBookingScreen({required this.location});
   @override
-  _CarBookingScreenState createState() => _CarBookingScreenState();
+  _CarBookingScreenState createState() => _CarBookingScreenState(location: this.location);
 }
 
 class _CarBookingScreenState extends State<CarBookingScreen> {
+  List<AutocompletePrediction> placePredictions = [];
+  final _destinationFocusNode = FocusNode();
+  TextEditingController? activeController;
+
+  Future<void> placeAutocomplete(String query) async {
+    final sessionToken = Uuid().v4(); // Generate a unique session token
+    final places = GoogleMapsPlaces(apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI');
+
+    final response = await places.autocomplete(
+      query,
+      sessionToken: sessionToken,
+      language: 'es',
+      components: [
+        Component(Component.country, 'mx'), // Replace 'mx' with your desired country code
+      ],
+    );
+
+    if (response.isOkay) {
+      setState(() {
+        placePredictions = response.predictions.map((prediction) {
+          return AutocompletePrediction(
+            description: prediction.description,
+            placeId: prediction.placeId,
+          );
+        }).toList();
+      });
+    } else {
+      print('Error occurred while fetching place predictions: ${response.errorMessage}');
+    }
+  }
+
   late RouteModel _route;
+  final maps.Location location;
+  GoogleMapsPlaces _places = GoogleMapsPlaces(apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI');
+  _CarBookingScreenState({required this.location});
 
   set route(RouteModel value) {
     _route = value;
   }
+
 
   @override
   void initState() {
     super.initState();
     route = widget.route;
   }
+
+
 
   bool validateBookingDateTime() {
     DateTime bookingDateTime = selectedDate.add(selectedTime as Duration);
@@ -38,6 +90,11 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
     // Booking date and time must be at least one hour in the future from now
     return bookingDateTime.isAfter(now.add(Duration(hours: 1)));
   }
+
+
+
+
+
   Future<String> getStartLocationName(LatLng coordinates) async {
     List<Placemark> placemarks =
     await placemarkFromCoordinates(coordinates.latitude, coordinates.longitude);
@@ -73,7 +130,7 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay(hour: 0, minute: 0);
   List<RouteModel> rutasDisponibles = [];
-   // replace with the actual end location name
+  // replace with the actual end location name
   final repo = DirectionsRepository(
     apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI',
     geocodingService: GeocodingService(apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI'),
@@ -199,8 +256,10 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
   void dispose() {
     _originController.dispose();
     _destinationController.dispose();
+    _destinationFocusNode.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -221,9 +280,16 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
                       TextField(
                         controller: _originController,
+                        onTap: () {
+                          activeController = _originController;
+                        },
+                        onChanged: (value) {
+                          placeAutocomplete(value);
+                        },
                         decoration: InputDecoration(
                           hintText: 'Origen',
                           border: OutlineInputBorder(),
@@ -232,11 +298,19 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                       SizedBox(height: 16),
                       TextField(
                         controller: _destinationController,
+                        onTap: () {
+                          activeController = _destinationController;
+                        },
+                        onChanged: (value) {
+                          placeAutocomplete(value);
+                        },
                         decoration: InputDecoration(
                           hintText: 'Destino',
                           border: OutlineInputBorder(),
                         ),
                       ),
+
+
                     ],
                   ),
                 ),
@@ -350,8 +424,28 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 50.0, vertical: 15.0),
                   textStyle: TextStyle(fontSize: 18),
                 ),
+
               ),
 
+            ),
+          ),
+          const Divider(
+            height: 4,
+            thickness: 4,
+            color:  Colors.cyan,
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: placePredictions.length,
+            itemBuilder: (context, index) => ListTile(
+              title: Text(placePredictions[index].description!),
+              onTap: () {
+                  setState(() {
+                    activeController!.text = placePredictions[index].description!;
+                  });
+
+              },
+            ),
             ),
           ),
         ],

@@ -8,10 +8,15 @@ import 'package:google_mao/screens/carbooking_screen.dart';
 import 'package:google_mao/screens/completed_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLngBounds;
+import 'package:google_maps_webservice/src/core.dart';
+import 'package:google_maps_webservice/src/core.dart';
+
+
 
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 const String apiKey = 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI';
 class CompletedScreen extends StatefulWidget {
@@ -24,7 +29,11 @@ class _CompletedScreenState extends State<CompletedScreen> {
   Set<Polyline> _polylines = Set<Polyline>();
   Set<Marker> _markers = Set<Marker>(); // Add this line
   LatLng _origin = LatLng(37.7749, -122.4194); // Replace with the desired origin LatLng
-  LatLng _destination = LatLng(34.0522, -118.2437); // Replace with the desired destination LatLng
+  LatLng _destination = LatLng(34.0522, -118.2437);
+  Location get location {
+    return Location(lat: 12.3456, lng: 65.4321); // replace with actual computation
+  }
+
 
   Future<void> _getRoute() async {
     String url =
@@ -220,7 +229,7 @@ class _CompletedScreenState extends State<CompletedScreen> {
                   ElevatedButton(
                     onPressed: () {
                       Navigator.push(context,
-                          MaterialPageRoute(builder: (context) => CarBookingScreen()));// Handle 'Continuar' button press
+                          MaterialPageRoute(builder: (context) => CarBookingScreen(location: location,)));// Handle 'Continuar' button press
                     },
                     child: Text('Continuar'),
                     style: ElevatedButton.styleFrom(
