@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
-import 'notification_screen.dart';
+import 'carbooking_screen.dart';
+//import 'notification_screen.dart';
 
 class RouteScreen extends StatefulWidget {
   @override
@@ -33,7 +33,12 @@ class _RouteScreenState extends State<RouteScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => NotificationScreen()),
+                    //MaterialPageRoute(builder: (context) => NotificationScreen()),
+                    //location faltante genera error
+                    MaterialPageRoute(
+                        builder: (context) {
+                          return CarBookingScreen();
+                        }),
                   );// Handle 'Crear Ruta' button press
                 },
                 child: Text('Crear Ruta'),
