@@ -37,7 +37,7 @@ class _RouteScreenState extends State<RouteScreen> {
                     //location faltante genera error
                     MaterialPageRoute(
                         builder: (context) {
-                          return CarBookingScreen();
+                          return CarBookingScreen();//es necesario ver la api, location es un objeto
                         }),
                   );// Handle 'Crear Ruta' button press
                 },
