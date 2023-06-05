@@ -7,9 +7,14 @@ import 'package:google_mao/utils/color_utils.dart';
 import 'package:google_mao/screens/addpage.dart';
 import 'package:google_mao/reusable_widgets/reusable_widget.dart';
 import 'package:google_mao/screens/rutasDisponobles.dart';
+import 'package:google_maps_webservice/src/core.dart' as maps;
+
+import '../Models/route.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({Key? key}) : super(key: key);
+  final maps.Location location;
+  final RouteModel route;
+  const SignInScreen({Key? key, required this.location, required this.route}) : super(key: key);
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -66,7 +71,7 @@ class _SignInScreenState extends State<SignInScreen> {
                       password: _passwordTextController.text)
                       .then((value) {
                     Navigator.push(context,
-                        MaterialPageRoute(builder: (context) => HomeScreen()));
+                        MaterialPageRoute(builder: (context) => HomeScreen(location: widget.location, route: widget.route,)));
 
                   }).onError((error, stackTrace) {
                     print("error ${error.toString()}");
@@ -90,7 +95,7 @@ class _SignInScreenState extends State<SignInScreen> {
         GestureDetector(
           onTap: () {
             Navigator.push(context,
-                MaterialPageRoute(builder: (context) => SignUpScreen()));
+                MaterialPageRoute(builder: (context) => SignUpScreen(location: widget.location, route: widget.route,)));
           },
           child: const Text(
             " Sign Up",

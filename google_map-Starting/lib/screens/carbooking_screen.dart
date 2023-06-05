@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:google_mao/screens/completed_screen.dart';
-
 import 'package:google_mao/screens/rutasDisponobles.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
@@ -12,7 +11,6 @@ import 'package:uuid/uuid.dart';
 import '../DirectionsRepository.dart';
 import '../Services/GeocodingService.dart';
 import '../Services/route_services.dart';
-import '../Models/route.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_maps_webservice/places.dart';
 import 'package:geocoding_platform_interface/src/models/location.dart';
@@ -22,21 +20,41 @@ import 'package:google_mao/components/network_utility.dart';
 import 'package:google_mao/Models/autocomplete_prediction.dart';
 import 'package:google_mao/Models/place_auto_complete_response.dart' as ku;
 import 'package:google_mao/components/location_list_tile.dart';
+import 'package:google_mao/screens/rutasDisponobles.dart';
 
+import 'package:google_mao/Models/route.dart';
+
+import 'detallesRuta.dart';
 
 
 class CarBookingScreen extends StatefulWidget {
-  late RouteModel route =  RouteModel(id: '', startPoint: LatLng(0.0, 0.0), startLocationName: '', driverId: '', endPoint: LatLng(0.0, 0.0), endLocationName: '', time: DateTime.now(), waypoints: []);
+  late RouteModel route = RouteModel(
+      id: '',
+      startPoint: LatLng(0.0, 0.0),
+      startLocationName: '',
+      driverId: '',
+      endPoint: LatLng(0.0, 0.0),
+      endLocationName: '',
+      time: DateTime.now(),
+      waypoints: [], stopLocationName: '');
   final maps.Location location;
+
   CarBookingScreen({required this.location});
+
   @override
-  _CarBookingScreenState createState() => _CarBookingScreenState(location: this.location);
+  _CarBookingScreenState createState() =>
+      _CarBookingScreenState(location: this.location);
 }
 
 class _CarBookingScreenState extends State<CarBookingScreen> {
+
   List<AutocompletePrediction> placePredictions = [];
   final _destinationFocusNode = FocusNode();
   TextEditingController? activeController;
+  int index = 0;
+
+  LatLng? startLatLng;
+  LatLng? endLatLng;
 
   Future<void> placeAutocomplete(String query) async {
     final sessionToken = Uuid().v4(); // Generate a unique session token
@@ -74,14 +92,11 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
     _route = value;
   }
 
-
   @override
   void initState() {
     super.initState();
     route = widget.route;
   }
-
-
 
   bool validateBookingDateTime() {
     DateTime bookingDateTime = selectedDate.add(selectedTime as Duration);
@@ -91,13 +106,8 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
     return bookingDateTime.isAfter(now.add(Duration(hours: 1)));
   }
 
-
-
-
-
   Future<String> getStartLocationName(LatLng coordinates) async {
-    List<Placemark> placemarks =
-    await placemarkFromCoordinates(coordinates.latitude, coordinates.longitude);
+    List<Placemark> placemarks = await placemarkFromCoordinates(coordinates.latitude, coordinates.longitude);
     if (placemarks.isNotEmpty) {
       Placemark placemark = placemarks.first;
       return '${placemark.thoroughfare} ${placemark.subThoroughfare}, ${placemark.locality}, ${placemark.country}';
@@ -106,8 +116,7 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
   }
 
   Future<String> getEndLocationName(LatLng coordinates) async {
-    List<Placemark> placemarks =
-    await placemarkFromCoordinates(coordinates.latitude, coordinates.longitude);
+    List<Placemark> placemarks = await placemarkFromCoordinates(coordinates.latitude, coordinates.longitude);
     if (placemarks.isNotEmpty) {
       Placemark placemark = placemarks.first;
       return '${placemark.thoroughfare} ${placemark.subThoroughfare}, ${placemark.locality}, ${placemark.country}';
@@ -115,22 +124,23 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
     return 'Unknown Location';
   }
 
-  void _setStartAndEndLocationNames() async {
-    startLocationName = await getStartLocationName(startLatLng);
-    endLocationName = await getEndLocationName(endLatLng);
+  void _setStartAndEndLocationNames() {
+    setState(() {
+      startLatLng = LatLng(widget.route.startPoint.latitude, widget.route.startPoint.longitude);
+      endLatLng = LatLng(widget.route.endPoint.latitude, widget.route.endPoint.longitude);
+    });
   }
+
+
   final _formKey = GlobalKey<FormState>();
   String startLocationName = '';
   String endLocationName = '';
-
+  String stopLocationName = '';
   TextEditingController _routeIdController = TextEditingController();
   String userId = ''; // replace with the actual user ID
-  LatLng startLatLng = LatLng(0, 0); // replace with the actual start coordinates
-  LatLng endLatLng = LatLng(0, 0); // replace with the actual end coordinates
   DateTime selectedDate = DateTime.now();
   TimeOfDay selectedTime = TimeOfDay(hour: 0, minute: 0);
   List<RouteModel> rutasDisponibles = [];
-  // replace with the actual end location name
   final repo = DirectionsRepository(
     apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI',
     geocodingService: GeocodingService(apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI'),
@@ -138,7 +148,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
   String? _startAddress;
   String? _destinationAddress;
   DateTime? _selectedEndDate;
-
 
   String get _formattedStartDate =>
       _selectedDate == null ? 'Pick a date' : DateFormat.yMd().add_jm().format(_selectedDate!);
@@ -156,7 +165,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
   DateTime _selectedDate = DateTime.now();
 
   Future<void> _selectDate(BuildContext context) async {
-
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate,
@@ -168,7 +176,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
         _selectedDate = picked;
       });
   }
-
 
   Future<void> _selectTime(BuildContext context) async {
     final TimeOfDay? picked = await showTimePicker(
@@ -187,69 +194,89 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
       });
     }
   }
+
   Future<void> saveRoute() async {
     if (_selectedDate == null) {
       showDialog(
         context: context,
-        builder: (context) =>
-            AlertDialog(
-              title: Text('Error'),
-              content: Text('Please select a date and time.'),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: Text('OK'),
-                ),
-              ],
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Please select a date and time.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
             ),
+          ],
+        ),
       );
       return;
     }
 
     final origin = _originController.text;
     final destination = _destinationController.text;
-    final geocodingService = GeocodingService(
-        apiKey: "AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI");
+    final geocodingService = GeocodingService(apiKey: "AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI");
 
-    final originLatLng = await geocodingService.getLatLngFromAddress(origin);
-    final destinationLatLng = await geocodingService.getLatLngFromAddress(
-        destination);
-    Future<void> _submitRoute() async {
-      if (_formKey.currentState?.validate() ?? false){
-        _formKey.currentState?.save();
-        _setStartAndEndLocationNames();
+    final startLocation = await geocodingService.getLatLngFromAddress(origin);
+    final endLocation = await geocodingService.getLatLngFromAddress(destination);
 
-        bool isValidBookingDateTime = validateBookingDateTime();
-        if (isValidBookingDateTime){
-
-
-        }
-
-        RouteModel newRoute = RouteModel(
-          id: _routeIdController.text,
-          driverId: userId,
-          startPoint: LatLng(startLatLng.latitude, startLatLng.longitude),
-          endPoint: LatLng(endLatLng.latitude, endLatLng.longitude),
-          time: selectedDate.add(
-              Duration(hours: selectedTime.hour, minutes: selectedTime.minute)),
-
-          waypoints: [],
-          startLocationName: startLocationName,
-          // Add the start location name
-          endLocationName: endLocationName, // Add the end location name
-        );
-
-        await _routeService.createRoute(newRoute);
-
-      }
-      // Call the method to set start and end location names
-
+    if (startLocation == null || endLocation == null) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('Error'),
+          content: Text('Invalid start or end location.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
     }
+
+    startLatLng = LatLng(startLocation.latitude, startLocation.longitude);
+    endLatLng = LatLng(endLocation.latitude, endLocation.longitude);
+
+    _setStartAndEndLocationNames();
+
+    RouteModel newRoute = RouteModel(
+      id: _routeIdController.text,
+      driverId: userId,
+      startPoint: startLatLng!,
+      endPoint: endLatLng!,
+      time: selectedDate.add(Duration(hours: selectedTime.hour, minutes: selectedTime.minute)),
+      waypoints: [],
+      startLocationName: startLocationName,
+      endLocationName: endLocationName,
+      stopLocationName: stopLocationName,
+    );
+
+
+    await FirebaseFirestore.instance.collection('routes').add(newRoute.toJson());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Success'),
+        content: Text('Route saved successfully.'),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
-
-
 
 
   @override
@@ -259,7 +286,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
     _destinationFocusNode.dispose();
     super.dispose();
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -280,7 +306,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-
                     children: [
                       TextField(
                         controller: _originController,
@@ -309,8 +334,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                           border: OutlineInputBorder(),
                         ),
                       ),
-
-
                     ],
                   ),
                 ),
@@ -325,17 +348,53 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                 : null,
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () async {
-              await _selectDate(context);
-              if (_selectedDate != null) {
-                await _selectTime(context);
+              setState(() {
+                activeController!.text = placePredictions[index].description!;
+              });
+
+              final places = GoogleMapsPlaces(apiKey: 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI');
+              final response = await places.getDetailsByPlaceId(placePredictions[index].placeId!);
+
+
+              if (response.status == 'OK') {
+                final result = response.result;
+                final geometry = result.geometry;
+                final location = geometry!.location;
+
+                setState(() {
+                  startLatLng = LatLng(location.lat, location.lng);
+                  endLatLng = LatLng(location.lat, location.lng);
+                });
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DetallesRuta(
+                      route: RouteModel(
+                        id: widget.route.id,
+                        startPoint: widget.route.startPoint,
+                        endPoint: widget.route.endPoint,
+                        startLocationName: placePredictions[index].description!,
+                        endLocationName: placePredictions[index].description!,
+                        stopLocationName: '', driverId: '', time: DateTime.now(), waypoints: [],
+                      ),
+                    ),
+                  ),
+                );
+              } else {
+                print('Error occurred while fetching place details: ${response.errorMessage}');
               }
             },
+
+
+
+
           ),
           Expanded(
             child: Container(
               alignment: Alignment.bottomCenter,
               padding: EdgeInsets.all(16),
-              child:ElevatedButton(
+              child: ElevatedButton(
                 onPressed: () async {
                   final origin = _originController.text;
                   final destination = _destinationController.text;
@@ -346,76 +405,26 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                   startLatLng = LatLng(originLatLng.latitude, originLatLng.longitude);
                   endLatLng = LatLng(destinationLatLng.latitude, destinationLatLng.longitude);
 
-
                   _setStartAndEndLocationNames();
-                  double destinationLatitude = destinationLatLng.latitude;
-                  double destinationLongitude = destinationLatLng.longitude;
-                  final directionsRepository = DirectionsRepository(
-                    geocodingService: geocodingService,
-                    apiKey: "AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI",
-                  );
-                  final directions = await directionsRepository.getDirections(
-                    origin: originLatLng,
-                    destination: destinationLatLng,
-                  );
-                  if (directions?.bounds == null) {
-                    throw Exception('No route found');
-                  }
-                  try {
-                    final directions = await directionsRepository.getDirections(
-                      origin: originLatLng,
-                      destination: destinationLatLng,
-                    );
-
-                    // The rest of your code to process the directions
-
-                  } catch (e) {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text('Error'),
-                        content: Text(e.toString()),
-                        actions: [
-                          TextButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            child: Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-
-
-                  final _originLatitude = directions?.startLocation?.latitude ?? 0.0;
-                  final _originLongitude = directions?.startLocation?.longitude ?? 0.0;
-                  final _destinationLatitude = directions?.endLocation?.latitude ?? 0.0;
-                  final _destinationLongitude = directions?.endLocation?.longitude ?? 0.0;
-
 
                   RouteModel newRoute = RouteModel(
                     id: _routeIdController.text,
                     driverId: userId,
-                    startPoint: LatLng(startLatLng.latitude, startLatLng.longitude),
-                    endPoint: LatLng(endLatLng.latitude, endLatLng.longitude),
+                    startPoint: LatLng(originLatLng.latitude, originLatLng.longitude),
+                    endPoint: LatLng(destinationLatLng.latitude, destinationLatLng.longitude),
+
                     time: selectedDate.add(Duration(hours: selectedTime.hour, minutes: selectedTime.minute)),
-
                     waypoints: [],
-                    startLocationName: startLocationName, // Add the start location name
-                    endLocationName: endLocationName, // Add the end location name
+                    startLocationName: startLocationName,
+                    endLocationName: endLocationName,
+                    stopLocationName: stopLocationName,
                   );
-                  await FirebaseFirestore.instance
-                      .collection('routes')
-                      .add(newRoute.toJson());
 
-                  await saveRoute();
+                  final DocumentReference result = await FirebaseFirestore.instance.collection('routes').add(newRoute.toJson());
+
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => RutasDisponibles(route: widget.route),
-                    ),
+                    MaterialPageRoute(builder: (context) => RutasDisponibles(route: newRoute)),
                   );
                 },
                 child: Text('Crear'),
@@ -424,7 +433,6 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
                   padding: EdgeInsets.symmetric(horizontal: 50.0, vertical: 15.0),
                   textStyle: TextStyle(fontSize: 18),
                 ),
-
               ),
 
             ),
@@ -432,20 +440,19 @@ class _CarBookingScreenState extends State<CarBookingScreen> {
           const Divider(
             height: 4,
             thickness: 4,
-            color:  Colors.cyan,
+            color: Colors.cyan,
           ),
           Expanded(
             child: ListView.builder(
               itemCount: placePredictions.length,
-            itemBuilder: (context, index) => ListTile(
-              title: Text(placePredictions[index].description!),
-              onTap: () {
+              itemBuilder: (context, index) => ListTile(
+                title: Text(placePredictions[index].description!),
+                onTap: () {
                   setState(() {
                     activeController!.text = placePredictions[index].description!;
                   });
-
-              },
-            ),
+                },
+              ),
             ),
           ),
         ],

@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_mao/Models/route.dart';
 import 'package:google_mao/Models/user.dart';
 import 'package:google_mao/screens/addpage.dart';
 import 'package:google_mao/screens/editpage.dart';
@@ -6,7 +7,6 @@ import 'package:google_mao/screens/editpage.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mao/screens/perfil.dart';
 
-import '../Models/route.dart';
 import '../Services/route_services.dart';
 import '../services/firebase_crud.dart';
 import 'detallesRuta.dart';
@@ -41,8 +41,13 @@ class _RutasDisponibles extends State<RutasDisponibles> {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else {
             List<RouteModel> routes = snapshot.data!.docs
-                .map((doc) => RouteModel.fromJson(doc.id, doc.data()! as Map<String, dynamic>))
-                .toList();
+                .map((doc) {
+              final data = doc.data()! as Map<String, dynamic>;
+              data['id'] = doc.id;
+              return RouteModel.fromJson(data);
+            }).toList().cast<RouteModel>();
+
+
             return ListView.builder(
               itemCount: routes.length,
               itemBuilder: (context, index) {
@@ -57,7 +62,7 @@ class _RutasDisponibles extends State<RutasDisponibles> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => DetallesRuta(
-                          route: route,
+                          route: widget.route,
                         ),
                       ),
                     );

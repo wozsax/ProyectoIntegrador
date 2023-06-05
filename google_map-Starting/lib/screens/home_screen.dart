@@ -5,16 +5,41 @@ import 'package:google_mao/screens/route_screen.dart';
 import 'package:google_mao/screens/rutasDisponobles.dart';
 import 'package:google_mao/screens/signin_screen.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_maps_webservice/src/core.dart' as maps;
+import '../Models/route.dart';
+
+
 
 import '../Models/route.dart';
 
 class HomeScreen extends StatefulWidget {
-  late RouteModel route =  RouteModel(id: '', startPoint: LatLng(0.0, 0.0), startLocationName: '', driverId: '', endPoint: LatLng(0.0, 0.0), endLocationName: '', time: DateTime.now(), waypoints: []);
-@override
-_HomeScreenState createState() => _HomeScreenState();
+  final maps.Location location;
+  final RouteModel route;
+
+  HomeScreen({required this.location, required this.route});
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  late RouteModel route;
+
+  @override
+  void initState() {
+    super.initState();
+    route = RouteModel(
+      id: '',
+      startPoint: LatLng(0.0, 0.0),
+      startLocationName: '',
+      driverId: '',
+      endPoint: LatLng(0.0, 0.0),
+      endLocationName: '',
+      time: DateTime.now(),
+      waypoints: [], stopLocationName: '',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,9 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.symmetric(horizontal: 50.0),
             child: ElevatedButton(
               onPressed: () {
-                // Handle 'Pasajero' button press
-                Navigator.push(context,
-                    MaterialPageRoute(builder:  (context) => RutasDisponibles(route: widget.route)));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RutasDisponibles(route: route)),
+                );
               },
               child: Text('Pasajero'),
               style: ElevatedButton.styleFrom(
@@ -47,8 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: EdgeInsets.symmetric(horizontal: 50.0),
             child: ElevatedButton(
               onPressed: () {
-                Navigator.push(context,
-                    MaterialPageRoute(builder:  (context) => RouteScreen()));// Handle 'Conductor' button press
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => RouteScreen(location: widget.location, route: widget.route,)),
+                );
               },
               child: Text('Conductor'),
               style: ElevatedButton.styleFrom(

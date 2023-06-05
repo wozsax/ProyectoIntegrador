@@ -1,5 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_google_places/flutter_google_places.dart';
 import 'package:google_mao/screens/perfil.dart';
@@ -8,13 +8,12 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_webservice/places.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:uuid/uuid.dart';
 
 import '../Models/route.dart';
 import '../Services/route_services.dart';
 
-void main() {
-  runApp(MaterialApp(home: UnirseViaje(markers: [])));
-}
+
 
 List<LatLng> decodePolyline(String encoded) {
   List<LatLng> poly = [];
@@ -45,9 +44,10 @@ List<LatLng> decodePolyline(String encoded) {
 }
 
 class UnirseViaje extends StatefulWidget {
+  final RouteModel route;
   final List<Marker> markers;
 
-  UnirseViaje({required this.markers});
+  UnirseViaje({required this.markers, required this.route});
 
   @override
   State<StatefulWidget> createState() {
@@ -56,7 +56,11 @@ class UnirseViaje extends StatefulWidget {
 }
 
 class _UnirseViajeState extends State<UnirseViaje> {
+  late String routeId;
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   TextEditingController _destinationController = TextEditingController();
+  List<Map<String, double>> _waypoints = [];
 
   Marker? _selectedMarker;
   Set<Marker> _markers = {};
@@ -70,31 +74,40 @@ class _UnirseViajeState extends State<UnirseViaje> {
   int _markerIdCounter = 0;
   List<LatLng> _polylinePoints = [];
 
+
   void _updateRoute() async {
+    final String routeId = Uuid().v4();
+
     // Create a new list of waypoints including the new stop
-    List<LatLng> updatedWaypoints = [..._polylinePoints];
+    List<LatLng> updatedWaypoints = _markers.map((marker) => marker.position).toList();
 
     // Get the start and end points of the route
-    LatLng startPoint = _polylinePoints.first;
-    LatLng endPoint = _polylinePoints.last;
+    LatLng startPoint = updatedWaypoints.first;
+    LatLng endPoint = updatedWaypoints.last;
 
     // Get the start and end location names
-    String startLocationName = _destinationController.text; // Assuming the destination field is the stop location
-    String endLocationName = 'Destination'; // Assuming the end location name is fixed
-
+    String stopLocationName = _destinationController.text; // Assuming the destination field is the stop location
+    String endLocationName = widget.route.endLocationName; // Assuming the end location name is fixed
+    String startLocationName = widget.route.startLocationName;
     // Create a new instance of RouteModel with the updated information
-    RouteModel updatedRoute = RouteModel(
-      id: 'your_route_id', // Replace with your route ID
-      driverId: 'your_driver_id', // Replace with your driver ID
+    final updatedRoute = RouteModel(
+      id: routeId,
+      driverId: 'your_driver_id',
       startPoint: startPoint,
       endPoint: endPoint,
+      stopLocationName: stopLocationName,
       startLocationName: startLocationName,
       endLocationName: endLocationName,
       time: DateTime.now(),
       waypoints: updatedWaypoints,
     );
+    await RouteService().updateRoute(updatedRoute);
+    saveStopLocation(routeId, stopLocationName);
+    final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-    // Call the route service to update the route in the database
+
+
+
     await RouteService().updateRoute(updatedRoute);
 
     // Show a success message or perform any other necessary actions
@@ -102,6 +115,20 @@ class _UnirseViajeState extends State<UnirseViaje> {
       SnackBar(content: Text('Route updated successfully')),
     );
   }
+  Future<void> saveStopLocation(String routeId, String stopLocationName) async {
+    print('routeId: $routeId, stopLocation: $stopLocationName');  // Add this line
+    await _firestore.collection('routes').doc(routeId).set(
+      {
+        'stopLocationName': stopLocationName,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
+
+
+
+
 
   void _placeMarker(LatLng position) {
     setState(() {
@@ -111,8 +138,7 @@ class _UnirseViajeState extends State<UnirseViaje> {
           position: position,
           infoWindow: InfoWindow(
             title: 'Stop ${_markerIdCounter}',
-            snippet:
-            'Lat: ${position.latitude}, Lng: ${position.longitude}',
+            snippet: 'Lat: ${position.latitude}, Lng: ${position.longitude}',
           ),
         ),
       );
@@ -206,6 +232,7 @@ class _UnirseViajeState extends State<UnirseViaje> {
       }
 
       if (_markers.length >= 2) {
+        _polylinePoints = _markers.map((marker) => marker.position).toList();
         _updatePolyline();
       }
     });
@@ -275,9 +302,8 @@ class _UnirseViajeState extends State<UnirseViaje> {
                 if (pattern.isNotEmpty) {
                   final response = await places.autocomplete(pattern);
 
-                  final suggestions = response.predictions
-                      .map((p) => p.description)
-                      .toList();
+                  final suggestions =
+                  response.predictions.map((p) => p.description).toList();
                   return suggestions;
                 }
                 return [];
@@ -291,7 +317,8 @@ class _UnirseViajeState extends State<UnirseViaje> {
                 String selectedSuggestion = suggestion as String;
                 _destinationController.text = selectedSuggestion;
 
-                PlacesSearchResponse response = await places.searchByText(selectedSuggestion);
+                PlacesSearchResponse response =
+                await places.searchByText(selectedSuggestion);
                 if (response.status == "OK" && response.results.isNotEmpty) {
                   PlacesSearchResult result = response.results[0];
                   double lat = result.geometry?.location.lat ?? 0.0;
@@ -301,12 +328,17 @@ class _UnirseViajeState extends State<UnirseViaje> {
                   setState(() {
                     _addMarker(selectedLocation);
                     _selectedMarker = _markers.last;
-                    _polylinePoints = _markers.map((marker) => marker.position).toList();
+                    _polylinePoints =
+                        _markers.map((marker) => marker.position).toList();
                   });
 
                   _animateCameraToBounds();
+
+                  // Save the stop location to Firestore
+                  await saveStopLocation(routeId, selectedSuggestion);
                 }
               },
+
 
             ),
           ),
@@ -328,7 +360,9 @@ class _UnirseViajeState extends State<UnirseViaje> {
             child: ElevatedButton(
               child: Text('Unirse al viaje'),
               onPressed: () {
-                _updateRoute();
+
+
+
                 Navigator.push(
                   context,
                   MaterialPageRoute(

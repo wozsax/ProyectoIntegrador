@@ -5,10 +5,15 @@ import 'package:google_mao/screens/home_screen.dart';
 import 'package:google_mao/utils/color_utils.dart';
 import 'package:google_mao/screens/addpage.dart';
 import 'package:google_mao/screens/rutasDisponobles.dart';
+import 'package:google_maps_webservice/src/core.dart' as maps;
+
+import '../Models/route.dart';
 
 
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({Key? key}) : super(key: key);
+  const SignUpScreen({Key? key, required this.location, required this.route}) : super(key: key);
+  final maps.Location location;
+  final RouteModel route;
 
   @override
   _SignUpScreenState createState() => _SignUpScreenState();
@@ -72,7 +77,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           password: _emailTextController.text)
                           .then((value)  {
                             Navigator.push(context,
-                                    MaterialPageRoute(builder:  (context) => HomeScreen()));
+                                    MaterialPageRoute(builder:  (context) => HomeScreen(location: widget.location, route: widget.route,)));
 
                         }).onError((error, stackTrace) {
                           print("Error ${error.toString()}");

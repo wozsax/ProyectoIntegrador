@@ -1,29 +1,45 @@
-import 'dart:math';
+import 'dart:convert';
+
 
 
 import 'package:flutter/material.dart';
 import 'package:google_mao/screens/perfil.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'dart:math';
+
+import 'package:uuid/uuid.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+
+
+extension on double {
+  double toRadians() => this * (pi / 180);
+}
 
 
 
 
+const String API_KEY = 'AIzaSyAhw5o-zrk6aCihBJMU5hUeQrPn-lUyPhI'; // Put your Google Maps API Key here
 
 class RutaUnida extends StatefulWidget {
 
+  final String uniqueCode;
   final Set<Marker> markers;
   final Set<Polyline> polylines;
   final String route;
   final String hour;
   final String carModel;
 
-  RutaUnida({required this.markers, required this.polylines, required this.route, required this.hour, required this.carModel});
+  RutaUnida({required this.markers, required this.polylines, required this.route, required this.hour, required this.carModel})
+      : uniqueCode = Uuid().v4().substring(0, 4);  // Generate the unique code here
 
   @override
   _RutaUnidaState createState() => _RutaUnidaState();
 }
 
 class _RutaUnidaState extends State<RutaUnida> {
+  late String _uniqueCode;
   final _routeController = TextEditingController();
   final _hourController = TextEditingController();
   final _carModelController = TextEditingController();
@@ -34,33 +50,94 @@ class _RutaUnidaState extends State<RutaUnida> {
 
   @override
   void initState() {
+    super.initState();
     _routeController.text = widget.route;
     _hourController.text = widget.hour;
     _carModelController.text = widget.carModel;
-    super.initState();
     _markers = widget.markers;
     _polylines = widget.polylines;
-    List<LatLng> polylineCoordinates = [];
-    for (Marker marker in _markers) {
-      polylineCoordinates.add(marker.position);
-    }
-    _polylines.add(Polyline(
-      polylineId: PolylineId('route'),
-      color: Colors.blue,
-      points: polylineCoordinates,
-    ));
+    _uniqueCode = widget.uniqueCode;
+
+    _addExistingPointInMiddle();
+    print("Unique Code: ${widget.uniqueCode}");
+    createRouteRecord(widget.route, _markers, _polylines, widget.hour, widget.carModel);
   }
+  final databaseReference = FirebaseDatabase.instance.reference();
+
+  void createRouteRecord(
+      String routeName, Set<Marker> markers, Set<Polyline> polylines, String hour, String carModel) {
+    final DatabaseReference databaseReference = FirebaseDatabase.instance.reference();
+
+    // Save the route information to the database using the unique code
+    databaseReference.child("routes").child(_uniqueCode).set({
+      'name': routeName,
+      'markers': markers.map((marker) => marker.toJson()).toList(),
+      'polylines': polylines.map((polyline) => polyline.toJson()).toList(),
+      'hour': hour,
+      'carModel': carModel,
+    });
+  }
+
+
+
+
+  void _addExistingPointInMiddle() async {
+    List<Marker> sortedMarkers = _markers.toList()
+      ..sort((a, b) {
+        return _calculateDistance([a.position, _markers.first.position]).compareTo(
+            _calculateDistance([b.position, _markers.first.position]));
+      });
+
+    Marker middleMarker = sortedMarkers[sortedMarkers.length ~/ 2];
+
+    List<LatLng> polylinePoints = await _getRouteCoordinates(
+        _markers.first.position, middleMarker.position);
+
+    polylinePoints.addAll(await _getRouteCoordinates(
+        middleMarker.position, sortedMarkers.last.position));
+
+    setState(() {
+      _polylines = {
+        Polyline(
+          polylineId: PolylineId('route'),
+          color: Colors.blue,
+          points: polylinePoints,
+        )
+      };
+    });
+
+    _animateCameraToBounds();
+  }
+
   Future<void> _animateCameraToBounds() async {
-    if (_controllerReady) {
-      LatLngBounds bounds = _calculateBounds();
-      CameraUpdate cameraUpdate = CameraUpdate.newLatLngBounds(bounds, 50);
-      await _controller.animateCamera(cameraUpdate);
+    // Get the highest and lowest longitude and latitude
+    double minLat = _markers.first.position.latitude;
+    double minLong = _markers.first.position.longitude;
+    double maxLat = _markers.first.position.latitude;
+    double maxLong = _markers.first.position.longitude;
+
+    for (Marker marker in _markers) {
+      LatLng pos = marker.position;
+      if (pos.latitude < minLat) minLat = pos.latitude;
+      if (pos.longitude < minLong) minLong = pos.longitude;
+      if (pos.latitude > maxLat) maxLat = pos.latitude;
+      if (pos.longitude > maxLong) maxLong = pos.longitude;
     }
+
+    // Calculate center of map
+    double centerLat = (minLat + maxLat) / 2;
+    double centerLong = (minLong + maxLong) / 2;
+    LatLng centerBounds = LatLng(centerLat, centerLong);
+
+    // Initialize Camera Position
+    CameraPosition cp = CameraPosition(target: centerBounds, zoom: 13);
+
+    // Move the camera to the position
+    _controller.animateCamera(CameraUpdate.newCameraPosition(cp));
   }
 
 
-  LatLngBounds _calculateBounds() {
-    LatLngBounds bounds;
+  Future<LatLngBounds> _calculateBounds() async {
     LatLng southwest;
     LatLng northeast;
     double swLat = 90;
@@ -78,12 +155,13 @@ class _RutaUnidaState extends State<RutaUnida> {
 
     southwest = LatLng(swLat, swLng);
     northeast = LatLng(neLat, neLng);
-    bounds = LatLngBounds(southwest: southwest, northeast: northeast);
-    return bounds;
+
+    return LatLngBounds(southwest: southwest, northeast: northeast);
   }
+
   double _calculateDistance(List<LatLng> polylinePoints) {
-    const int earthRadius = 6371000; // meters
     double totalDistanceInMeters = 0.0;
+    const double earthRadius = 6371; // earth radius in kilometers
 
     for (int i = 0; i < polylinePoints.length - 1; i++) {
       double lat1 = polylinePoints[i].latitude;
@@ -96,8 +174,7 @@ class _RutaUnidaState extends State<RutaUnida> {
 
       double a = sin(dLat / 2) * sin(dLat / 2) +
           cos(_toRadians(lat1)) * cos(_toRadians(lat2)) *
-              sin(dLon / 2) *
-              sin(dLon / 2);
+              sin(dLon / 2) * sin(dLon / 2);
 
       double c = 2 * atan2(sqrt(a), sqrt(1 - a));
       double distance = earthRadius * c;
@@ -105,8 +182,54 @@ class _RutaUnidaState extends State<RutaUnida> {
       totalDistanceInMeters += distance;
     }
 
-    double distanceInKm = totalDistanceInMeters / 1000;
-    return distanceInKm;
+    return totalDistanceInMeters;
+  }
+
+
+  Future<List<LatLng>> _getRouteCoordinates(LatLng origin, LatLng destination) async {
+    String url =
+        'https://maps.googleapis.com/maps/api/directions/json?origin=${origin.latitude},${origin.longitude}&destination=${destination.latitude},${destination.longitude}&key=$API_KEY';
+
+    http.Response response = await http.get(Uri.parse(url));
+    Map values = jsonDecode(response.body);
+
+    return _decodeEncodedPolyline(values["routes"][0]["overview_polyline"]["points"]);
+  }
+
+  List<LatLng> _decodeEncodedPolyline(String encoded) {
+    List<LatLng> points = [];
+    int index = 0;
+    int len = encoded.length;
+    int lat = 0;
+    int lng = 0;
+
+    while (index < len) {
+      int b;
+      int shift = 0;
+      int result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.codeUnitAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      int dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += dlng;
+
+      LatLng p = new LatLng(lat / 1E5, lng / 1E5);
+      points.add(p);
+    }
+
+    return points;
   }
 
   double _toRadians(double degree) {
@@ -114,85 +237,108 @@ class _RutaUnidaState extends State<RutaUnida> {
   }
 
   int _calculateDuration(List<LatLng> polylinePoints) {
-    const AVERAGE_DRIVING_SPEED_KPH = 30;
-    double distanceInMeters = _calculateDistance(polylinePoints);
-    int durationInSeconds = (distanceInMeters / 1000 / AVERAGE_DRIVING_SPEED_KPH * 3600).round();
-    return durationInSeconds;
+    const double AVERAGE_DRIVING_SPEED_KPH = 30;
+    double distanceInKilometers = _calculateDistance(polylinePoints);
+    int durationInMinutes = (distanceInKilometers / AVERAGE_DRIVING_SPEED_KPH * 60).round();
+    return durationInMinutes;
   }
 
 
 
+  void _onMapControllerComplete() async {
+    await Future.delayed(Duration(milliseconds: 100)); // you can try increasing the delay if needed
+    _animateCameraToBounds();
+  }
+
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Ruta Unida'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          IconButton(
-            icon: CircleAvatar(
-              backgroundImage: AssetImage('assets/profile.jpg'),
-            ),
-            onPressed: () {
-              // Handle profile icon press
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Container(
-              padding: EdgeInsets.all(10),
-              child: GoogleMap(
-                markers: _markers,
-                polylines: _polylines,
-                onMapCreated: (controller) {
-                  _controller = controller;
-                  setState(() {
-                    _controllerReady = true;
-                  });
-                  _animateCameraToBounds();
-                },
-                initialCameraPosition: CameraPosition(
-                  target: LatLng(37.7749, -122.4194),
-                  zoom: 10,
+    return FutureBuilder(
+        future: Future.delayed(Duration(seconds: 1)), // wait for 1 second
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return CircularProgressIndicator(); // show loading indicator while waiting
+          } else {
+            if (_controllerReady) {
+              _animateCameraToBounds(); // move camera to bounds
+            }
+
+            return Scaffold(
+              appBar: AppBar(
+
+                title: Text(
+                  'Viaje-Code: ${widget.uniqueCode}',
+                  style: TextStyle(color: Colors.white70),
                 ),
+                backgroundColor: Colors.blue,
+                actions: [
+
+                  IconButton(
+                    icon: Icon(Icons.account_box, color: Colors.black),
+                    onPressed: () {
+                      // Handle profile icon press
+                    },
+                  ),
+                ],
               ),
-            ),
-          ),
-          Expanded(
-            child: Container(
-              padding: EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
+
+              body: Column(
                 children: [
-                  Text(
-                    'Distancia: ${_polylines.isNotEmpty ? _calculateDistance(_polylines.first.points) : "KM"}',
-                    style: TextStyle(
-                      fontSize: 18,
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      padding: EdgeInsets.all(10),
+                      child: GoogleMap(
+                        markers: _markers,
+                        polylines: _polylines,
+                        onMapCreated: (GoogleMapController controller) {
+                          _controller = controller;
+                          _onMapControllerComplete();
+                        },
+                        initialCameraPosition: CameraPosition(
+                          target: LatLng(37.7749, -122.4194),
+                          zoom: 13,
+                        ),
+                      ),
                     ),
                   ),
-                  SizedBox(height: 20),
                   Text(
-                    'Duración: ${_polylines.isNotEmpty ? _calculateDuration(_polylines.first.points) : "hora"}',
-
+                    'Código único: ${widget.uniqueCode}',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.all(10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Distancia: ${_polylines.isNotEmpty ? _calculateDistance(_polylines.first.points).toStringAsFixed(2) + " KM" : "No Data"}',
+                            style: TextStyle(
+                              fontSize: 18,
+                            ),
+                          ),
+                          SizedBox(height: 20),
+                          Text(
+                            'Duración: ${_polylines.isNotEmpty
+                                ? _calculateDuration(_polylines.first.points).toString() + " minutos" : "No Data"}',
+                            style: TextStyle(
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-          ),
-        ],
-      ),
+            );
+          }
+        }
     );
   }
 }
@@ -201,10 +347,7 @@ class _RutaUnidaState extends State<RutaUnida> {
 
 
 
-
-
-
-class AddedRoute extends StatelessWidget {
+  class AddedRoute extends StatelessWidget {
   final Set<Marker> markers;
   final Set<Polyline> polylines;
 
@@ -217,14 +360,15 @@ class AddedRoute extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+
+
         actions: [
           IconButton(
             icon: Icon(Icons.arrow_back),
             onPressed: () => Navigator.of(context).pop(),
           ),
           IconButton(
-            icon: CircleAvatar(
-              backgroundImage: AssetImage('assets/profile.jpg'),
+            icon: Icon(Icons.account_box
             ),
             onPressed: () {
               Navigator.push(context,
@@ -240,7 +384,7 @@ class AddedRoute extends StatelessWidget {
         polylines: _polylines,
         initialCameraPosition: CameraPosition(
           target: LatLng(37.7749, -122.4194),
-          zoom: 10,
+          zoom: 20,
         ),
       ),
     );

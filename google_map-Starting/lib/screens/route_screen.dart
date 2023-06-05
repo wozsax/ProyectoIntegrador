@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_mao/Models/route.dart';
 import 'carbooking_screen.dart';
 //import 'notification_screen.dart';
+import 'package:google_maps_webservice/src/core.dart' as maps;
+
 
 class RouteScreen extends StatefulWidget {
+  final maps.Location location;
+  final RouteModel route;
+  RouteScreen({required this.location,  required this.route});
   @override
   _RouteScreenState createState() => _RouteScreenState();
 }
@@ -37,7 +43,7 @@ class _RouteScreenState extends State<RouteScreen> {
                     //location faltante genera error
                     MaterialPageRoute(
                         builder: (context) {
-                          return CarBookingScreen();
+                          return CarBookingScreen(location: widget.location,);
                         }),
                   );// Handle 'Crear Ruta' button press
                 },
